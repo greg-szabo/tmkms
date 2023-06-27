@@ -3,9 +3,8 @@
 pub use ed25519_dalek::{Keypair, PublicKey, SecretKey, Signature};
 
 use crate::{
-    error::{Error, ErrorKind::*},
+    error::Error,
     keyring::SigningProvider,
-    prelude::*,
 };
 use std::sync::Arc;
 use tendermint::TendermintKey;
@@ -19,18 +18,18 @@ pub struct Signer {
     provider: SigningProvider,
 
     /// Tendermint public key
-    public_key: TendermintKey,
+    public_key: PublicKey,
 
     /// Signer trait object
-    signer: Arc<Box<dyn signature::Signer<Signature> + Send + Sync>>,
+    signer: Arc<Box<ed25519_dalek::ExpandedSecretKey>>,
 }
 
 impl Signer {
     /// Create a new signer
     pub fn new(
         provider: SigningProvider,
-        public_key: TendermintKey,
-        signer: Box<dyn signature::Signer<Signature> + Send + Sync>,
+        public_key: PublicKey,
+        signer: Box<ed25519_dalek::ExpandedSecretKey>,
     ) -> Self {
         Self {
             provider,
@@ -41,7 +40,7 @@ impl Signer {
 
     /// Get the Tendermint public key for this signer
     pub fn public_key(&self) -> TendermintKey {
-        self.public_key
+        TendermintKey::ConsensusKey(self.public_key.into())
     }
 
     /// Get the provider for this signer
@@ -53,7 +52,6 @@ impl Signer {
     pub fn sign(&self, msg: &[u8]) -> Result<Signature, Error> {
         Ok(self
             .signer
-            .try_sign(msg)
-            .map_err(|e| format_err!(SigningError, "{}", e))?)
+            .sign(msg, &self.public_key))
     }
 }

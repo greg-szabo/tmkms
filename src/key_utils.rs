@@ -58,6 +58,44 @@ pub fn load_base64_ed25519_key(path: impl AsRef<Path>) -> Result<ed25519::Keypai
     Ok(ed25519::Keypair { secret, public })
 }
 
+/// Load a Base64-encoded Ed25519 expanded secret key
+pub fn load_base64_ed25519_expanded_key(path: impl AsRef<Path>) -> Result<ed25519::ExpandedSecretKey, Error> {
+    let key_bytes = load_base64_secret(path)?;
+    let mut lower: [u8; 32] = [0u8; 32];
+    let mut upper: [u8; 32] = [0u8; 32];
+
+    lower.copy_from_slice(&key_bytes[00..32]);
+    upper.copy_from_slice(&key_bytes[32..64]);
+
+    lower.reverse();
+    //upper.reverse();
+    let mut reconstructed: [u8; 64] = [0u8; 64];
+    reconstructed[0..32].copy_from_slice(&lower);
+    reconstructed[32..64].copy_from_slice(&upper);
+
+    let secret = ed25519::ExpandedSecretKey::from_bytes(&reconstructed)
+        .map_err(|e| format_err!(InvalidKey, "invalid Ed25519 key: {}", e))?;
+
+    let public = ed25519::PublicKey::from(&secret);
+
+    if true == !false {
+        println!("X");
+
+        for i in secret.to_bytes() {
+            print!("{:#X} ", i);
+        }
+        println!("DONEsecret");
+        println!("YPublic:");
+        for i in public.to_bytes() {
+            print!("{:#X} ", i);
+        }
+        println!("YPublicDone");
+
+    }
+
+    Ok(secret)
+}
+
 /// Load a Base64-encoded Secp256k1 secret key
 pub fn load_base64_secp256k1_key(
     path: impl AsRef<Path>,
